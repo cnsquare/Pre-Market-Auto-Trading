@@ -29,6 +29,7 @@ password = args.password
 
 robinhood = Robinhood()
 
+#Global Variables
 sell_stock = []
 num_sell_stock = []
 buydate = ""
@@ -39,12 +40,10 @@ earnings = 0
 
 
 def auto_trade():
-    print(datetime.datetime.now())
-    print("Starting to run...\n")
-
+    print("Starting script... " + datetime.datetime.now() + "\n")
 
     # Buy today's positions
-    set_time = "18:22"
+    set_time = "9:32"
     schedule.every().monday.at(set_time).do(run)
     schedule.every().tuesday.at(set_time).do(run)
     schedule.every().wednesday.at(set_time).do(run)
@@ -52,7 +51,7 @@ def auto_trade():
     schedule.every().friday.at(set_time).do(run)
 
     # Sell yesterday's positions
-    set_time = "16:34"
+    set_time = "9:30"
     schedule.every().monday.at(set_time).do(sellme)
     schedule.every().tuesday.at(set_time).do(sellme)
     schedule.every().wednesday.at(set_time).do(sellme)
@@ -66,7 +65,7 @@ def auto_trade():
 
 
 def run():
-    print("running")
+    print("\nProccessing\n")
     raw_data = data_mining("http://www.thestockmarketwatch.com/markets/pre-market/today.aspx")
     clean_s, clean_p, clean_v = data_cleanup(raw_data)
     selected_s, selected_p, selected_v = data_refinement(clean_s, clean_p, clean_v)
@@ -74,11 +73,10 @@ def run():
     buy(stock, num_stocks)
     global sell_stock, num_sell_stock
     sell_stock, num_sell_stock = stock, num_stocks
-    sellme()
 
 
 def data_mining(base):
-    # Only stockmarketwatch
+    # stockmarketwatch.com
     print("Accessing webpage")
     print("")
     print("Retriving raw data from " + base)
@@ -121,9 +119,10 @@ def data_refinement(gainers, prices, volumes):
     results_stock = []
     results_volume = []
     n = 0
+    
     for stock in gainers:
         if float(prices[n]) < 80:  # Cutoff price
-            if float(volumes[n]) > 8000:  # At least this volume
+            if float(volumes[n]) > 80000:  # At least this volume
                 results_stock.append(stock)
                 results_price.append(float(prices[n]))
                 results_volume.append(float(volumes[n]))
@@ -139,7 +138,8 @@ def data_refinement(gainers, prices, volumes):
 def pre_purchase_cal(final_stock, final_price):
     global beforecash
     local_account = [0] * len(final_stock)
-
+    
+    #Get starting fund from txt file 
     f = open("bank.txt", "r")
     my_equity = float(f.read().__str__())
     beforecash = my_equity
@@ -189,9 +189,6 @@ def buy(stock, num_stock):
 
     buydate = datetime.date.today().isoformat()
 
-    if not os.path.exists('metrics.csv'):
-        csv_create()
-
 
 def sellme():
     sell(sell_stock, num_sell_stock)
@@ -219,20 +216,19 @@ def sell(stock, num_stock):
     selldate = datetime.date.today().isoformat()
 
     earnings = total_cost
-    csv_write(buydate, selldate, beforecash, investedcash, earnings)
+    csv_create(buydate, selldate, beforecash, investedcash, earnings)
 
 
-def csv_create():
-    csv_columns = ['Buy Date', 'Sell Date', 'Beginning Amount', 'Invested Amount', 'Earnings', 'Total']
-    with open('metrics.csv', 'w', newline='') as csvfile:
-        writer = csv.writer(csvfile, dialect='excel', quoting=csv.QUOTE_MINIMAL)
-        writer.writerow(csv_columns)
-        csvfile.close()
-
-
-def csv_write(buydate, selldate, beforecash, investedcash, earnings):
+#Create a csv file
+def csv_create(buydate, selldate, beforecash, investedcash, earnings):
+    if not os.path.exists('metrics.csv'):
+        csv_columns = ['Buy Date', 'Sell Date', 'Beginning Amount', 'Invested Amount', 'Earnings', 'Total']
+        with open('metrics.csv', 'w', newline='') as csvfile:
+            writer = csv.writer(csvfile, dialect='excel', quoting=csv.QUOTE_MINIMAL)
+            writer.writerow(csv_columns)
+            csvfile.close()         
+        
     info = [buydate, selldate, beforecash, investedcash, earnings]
-    print(info)
     with open('metrics.csv', 'a', newline='') as csvfile:
         writer = csv.writer(csvfile, dialect='excel', quoting=csv.QUOTE_MINIMAL)
         writer.writerow(info)
@@ -255,10 +251,6 @@ while not logged_in:
     if logged_in is False:
         password = ""
         print("Invalid username or password.  Try again.\n")
-
-# test = robinhood.adjusted_equity_previous_close()
-# some = robinhood.get_user_info()
-# print(some)
 
 
 auto_trade()
